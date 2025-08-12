@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garbage Detector</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        #map-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+        }
+
+        #map-container img {
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        .shop-info {
+            position: absolute;
+            background: rgba(46, 125, 50, 0.8);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Example positions for markers */
+        .shop1 {
+            top: 40%;
+            left: 55%;
+        }
+
+        .shop2 {
+            top: 65%;
+            left: 30%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>♻ Garbage Detector</h1>
+
+    <div class="upload-container">
+        <input type="file" id="fileInput" accept="image/*" capture="camera">
+        <button onclick="uploadImage()">Upload</button>
+    </div>
+
+    <div id="result"></div>
+
+    <h2>Nearest Garbage Shops</h2>
+    <div id="map-container">
+        <!-- Static Google Map image (no API key) -->
+        <img src="https://maps.gstatic.com/tactile/basepage/pegman_sherlock.png" alt="Map Example">
+
+        <!-- Example shop details -->
+        <div class="shop-info shop1">
+            Green Recycle Center<br>
+            📞 +91-9876543210<br>
+            Price: ₹20/kg
+        </div>
+        <div class="shop-info shop2">
+            Eco Waste Buyers<br>
+            📞 +91-9123456780<br>
+            Price: ₹15/kg
+        </div>
+    </div>
+
+    <script>
+        function uploadImage() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files.length) {
+                alert("Please select a file!");
+                return;
+            }
+            alert("Image uploaded! Processing...");
+        }
+    </script>
+
+</body>
+
+</html>
