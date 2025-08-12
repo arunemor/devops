@@ -1,32 +1,17 @@
 body {
+    background-color: #f0fff0;
     font-family: Arial, sans-serif;
-    background-color: #f5fff5;
-    color: #2e7d32;
     text-align: center;
-    margin: 0;
-    padding: 0;
 }
 
 h1 {
-    background-color: #2e7d32;
-    color: white;
-    padding: 15px;
+    color: green;
 }
 
-.upload-container {
-    margin: 20px;
-}
-
-input,
-button {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 8px;
-    border: 1px solid #2e7d32;
-}
-
-button {
-    background-color: #2e7d32;
-    color: white;
+.upload-box {
+    border: 2px dashed green;
+    padding: 20px;
+    margin: 20px auto;
+    width: 300px;
     cursor: pointer;
 }

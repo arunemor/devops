@@ -1,29 +1,32 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import boto3
-import tensorflow as tf
-import numpy as np
-from PIL import Image
-import io
 import os
+import boto3
+import uuid
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
+import numpy as np
+import tensorflow as tf
+from utils import is_garbage, get_garbage_price
+
+# Force CPU only
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+# DynamoDB client
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name="us-east-1",
+    aws_access_key_id="YOUR_AWS_ACCESS_KEY",
+    aws_secret_access_key="YOUR_AWS_SECRET_KEY"
+)
+table = dynamodb.Table("GarbageRecords")
 
 # Load model
-MODEL_PATH = "model/garbage_classifier.h5"
-model = tf.keras.models.load_model(MODEL_PATH)
-class_names = ["newspaper", "aluminium", "glass_bottle", "plastic_bottle"]
+model = tf.keras.models.load_model("model/garbage_model.h5")
+labels = ["newspaper", "aluminium", "glass_bottle", "plastic_bottle"]
 
-# DynamoDB setup
-dynamodb = boto3.resource(
-    'dynamodb',
-    region_name='ap-south-1',  # Change region
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
-)
-materials_table = dynamodb.Table("GarbageMaterials")
-
-# FastAPI setup
 app = FastAPI()
+
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,35 +34,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_price_from_dynamodb(material):
-    response = materials_table.get_item(Key={"material": material})
-    return response["Item"]["price_per_kg"] if "Item" in response else None
-
-@app.post("/upload/")
+@app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
-    image = Image.open(io.BytesIO(await file.read())).resize((224, 224))
-    image_array = np.expand_dims(np.array(image) / 255.0, axis=0)
-    
-    predictions = model.predict(image_array)[0]
-    confidence = np.max(predictions) * 100
-    predicted_class = class_names[np.argmax(predictions)]
-    
-    if confidence < 80:
-        raise HTTPException(status_code=400, detail="Not identified as garbage")
-    
-    price = get_price_from_dynamodb(predicted_class)
-    
-    if price is None:
-        raise HTTPException(status_code=404, detail="Price not found in DB")
-    
-    nearest_shops = [
-        {"name": "Green Recycle Center", "contact": "+91-9876543210", 
-         "location": "https://maps.google.com/?q=28.6139,77.2090"}
-    ]
-    
-    return JSONResponse({
-        "material": predicted_class,
-        "confidence": round(confidence, 2),
-        "price_per_kg": price,
-        "nearest_shops": nearest_shops
+    img = Image.open(file.file).resize((224, 224))
+    img_array = np.array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+
+    predictions = model.predict(img_array)
+    confidence = float(np.max(predictions))
+    label = labels[np.argmax(predictions)]
+
+    if not is_garbage(label, confidence):
+        return {"status": "error", "message": "Not garbage"}
+
+    price = get_garbage_price(label)
+
+    # Save record to DynamoDB
+    table.put_item(Item={
+        "id": str(uuid.uuid4()),
+        "material": label,
+        "confidence": confidence,
+        "price": price
     })
+
+    return {
+        "status": "success",
+        "material": label,
+        "confidence": f"{confidence*100:.2f}%",
+        "price": price,
+        "map_image_url": "/static/garbage_map.png"
+    }
